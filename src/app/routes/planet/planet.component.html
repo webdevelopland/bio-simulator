@@ -1,3 +1,14 @@
 <div class="page">
-  Hello Planet
+  <div class="panel">
+    <button mat-flat-button (click)="start()" color="primary">Start</button>
+  </div>
+  <div class="grid">
+    <div class="row" *ngFor="let row of game.matrix.rowList">
+      <div
+        class="cell"
+        *ngFor="let cell of row.cellList"
+        [style.background]="cell.color"
+      ></div>
+    </div>
+  </div>
 </div>
