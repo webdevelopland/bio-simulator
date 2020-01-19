@@ -1,0 +1,12 @@
+@import './material';
+@import './notification';
+
+html {
+  overflow-x: hidden;
+  overflow-y: hidden;
+  body {
+    margin: 0;
+    font-family: Arial;
+    background-color: #f4f4f4;
+  }
+}
