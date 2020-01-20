@@ -6,7 +6,7 @@
       margin-right: 10px;
     }
   }
-  >.grid {
+  >.matrix {
     display: flex;
     flex-direction: column;
     >.row {
@@ -14,8 +14,17 @@
       flex-direction: row;
       >.cell {
         $cell-size: 10px;
-        width: $cell-size;
-        height: $cell-size;
+        position: relative;
+        >.color {
+          width: $cell-size;
+          height: $cell-size;
+        }
+        >.light {
+          position: absolute;
+          top: 0;
+          left: 0;
+          background: #ffd300;
+        }
       }
     }
   }

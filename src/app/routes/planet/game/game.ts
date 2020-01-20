@@ -1,10 +1,13 @@
 import { rand } from 'rndmjs';
 import { interval, Subscription } from 'rxjs';
 
+import { Point, Color } from '@/core/types';
 import { PLANET_SIZE } from './const';
 
 export class Game {
-  matrix: Matrix;
+  colorMatrix: Color[][];
+  cellMatrix: Cell[][];
+  groundMatrix: Ground[][];
   cells: Cell[] = [];
   intervalSub = new Subscription();
   isPlaying: boolean = false;
@@ -16,21 +19,25 @@ export class Game {
 
   init(): void {
     this.initMatrix();
+    this.initLight();
     this.createCells();
+    this.updateColorMatrix();
   }
 
   createCells(): void {
     const coords: number[][] = [];
+    this.cellMatrix = [];
     for (let i = 0; i < PLANET_SIZE; i++) {
+      this.cellMatrix[i] = [];
       for (let j = 0; j < PLANET_SIZE; j++) {
-        const cell: MatrixCell = this.getCell(j, i);
-        coords.push([cell.x, cell.y]);
+        this.cellMatrix[i][j] = undefined;
+        coords.push([j, i]);
       }
     }
     shuffle(coords);
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const cat = new Cell(this);
-      cat.color = '#19BF2C';
+      cat.color = '#19bf2c';
       cat.x = coords[i][0];
       cat.y = coords[i][1];
       this.cells.push(cat);
@@ -38,14 +45,42 @@ export class Game {
     }
   }
 
+  updateColorMatrix(): void {
+    this.colorMatrix = [];
+    for (let i = 0; i < PLANET_SIZE; i++) {
+      this.colorMatrix[i] = [];
+      for (let j = 0; j < PLANET_SIZE; j++) {
+        if (this.cellMatrix[i][j]) {
+          this.colorMatrix[i][j] = {
+            hex: this.cellMatrix[i][j].color,
+            opacity: 0,
+          };
+        } else {
+          if (this.groundMatrix[i][j].light > 0) {
+            this.colorMatrix[i][j] = this.colorMatrix[i][j] = {
+              hex: 'white',
+              opacity: this.groundMatrix[i][j].light * 0.5,
+            };
+          } else {
+            this.colorMatrix[i][j] = {
+              hex: 'white',
+              opacity: 0,
+            };
+          }
+        }
+      }
+    }
+  }
+
   start(): void {
-    this.intervalSub = interval(5).subscribe(() => {
+    this.intervalSub = interval(10).subscribe(() => {
       shuffle(this.cells);
       for (const cell of this.cells) {
         if (!cell.isDead) {
           cell.action(this.round);
         }
       }
+      this.updateColorMatrix();
       this.round++;
     });
     this.isPlaying = true;
@@ -57,41 +92,43 @@ export class Game {
   }
 
   initMatrix(): void {
-    const matrix: Matrix = { rowList: [] };
+    const matrix: Ground[][] = [];
     for (let i = 0; i < PLANET_SIZE; i++) {
-      const row: Row = { cellList: [] };
+      const row: Ground[] = [];
       for (let j = 0; j < PLANET_SIZE; j++) {
-        const empty = new GroundCell(this);
+        const empty = new Ground(this);
         empty.color = 'white';
         empty.x = j;
         empty.y = i;
-        row.cellList.push(empty);
+        row.push(empty);
       }
-      matrix.rowList.push(row);
+      matrix.push(row);
     }
-    this.matrix = matrix;
-
-    const ground = this.matrix
-      .rowList[Math.floor(PLANET_SIZE/2)]
-      .cellList[Math.floor(PLANET_SIZE/2)] as GroundCell;
-    ground.setLight(100);
+    this.groundMatrix = matrix;
   }
 
-  getCell(x: number, y: number): MatrixCell {
+  initLight(): void {
+    const center: number = Math.floor(PLANET_SIZE / 2);
+    const fading: number = 0.2;
+    const levelsAmount: number = Math.round(1 / fading);
+    for (let level = 0; level < levelsAmount; level++) {
+      for (let i = -level; i <= level; i++) {
+        for (let j = -level; j <= level; j++) {
+          const ground: Ground = this.getCell(center + i, center + j);
+          ground.light += fading;
+        }
+      }
+    }
+  }
+
+  getCell(x: number, y: number): Ground {
     x = repeatDirection(x);
     y = repeatDirection(y);
-    return this.matrix.rowList[y].cellList[x];
+    return this.groundMatrix[y][x];
   }
 }
 
-export interface Row {
-  cellList: MatrixCell[];
-}
-export interface Matrix {
-  rowList: Row[];
-}
-
-export class MatrixCell {
+export class Box {
   game: Game;
   color: string;
   x: number;
@@ -102,50 +139,54 @@ export class MatrixCell {
   }
 }
 
-export class GroundCell extends MatrixCell {
+export class Ground extends Box {
   light: number = 0;
-
-  setLight(light: number): void {
-    this.light = light;
-    this.color = '#ffd800';
-  }
 }
 
-export class Cell extends MatrixCell {
+export class Cell extends Box {
   isDead: boolean = false;
   energy: number = 100;
-  speed: number = 300;
+  // speed: number = 200;
 
   action(round: number): void {
-    if (round % Math.floor(10000 / this.speed) === 0) {
-      this.move();
-      this.check();
-    }
+    this.move();
+    this.photosynthesis();
+    // if (round % (1000 / this.speed) === 0) {
+    //   this.move();
+    // }
+    // if (round % (1000 / 20) === 0) {
+    //   this.photosynthesis();
+    // }
+    this.check();
   }
 
   move(): void {
-    const options = [
+    const options: number[][] = [
       [0, 1], [1, 0], [0, -1], [-1, 0],
     ];
-    const cellsToGo: MatrixCell[] = [];
+    const pointsToGo: Point[] = [];
     for (const option of options) {
-      const cell: MatrixCell = this.game.getCell(this.x + option[0], this.y + option[1]);
-      if (cell instanceof GroundCell) {
-        cellsToGo.push(cell);
+      const ground: Ground = this.game.getCell(this.x + option[0], this.y + option[1]);
+      if (this.game.cellMatrix[ground.x, ground.y]) {
+        pointsToGo.push({ x: ground.x, y: ground.y });
       }
     }
-    if (cellsToGo.length > 0 && this.energy > 0) {
+    if (pointsToGo.length > 0 && this.energy > 0) {
       // Swap empty cell and the cell
-      const cellToGo: MatrixCell = cellsToGo[rand(0, cellsToGo.length - 1)];
-      this.game.matrix.rowList[this.y].cellList[this.x] = cellToGo;
-      const currentX = this.x;
-      const currentY = this.y;
-      this.x = cellToGo.x;
-      this.y = cellToGo.y;
-      cellToGo.x = currentX;
-      cellToGo.y = currentY;
+      const pointToGo: Point = pointsToGo[rand(0, pointsToGo.length - 1)];
+      this.game.cellMatrix[this.y][this.x] = undefined;
+      this.x = pointToGo.x;
+      this.y = pointToGo.y;
       this.place();
       this.energy -= 1;
+    }
+  }
+
+  photosynthesis(): void {
+    const ground: Ground = this.game.getCell(this.x, this.y);
+    this.energy += ground.light * 20;
+    if (this.energy > 100) {
+      this.energy = 100;
     }
   }
 
@@ -157,7 +198,7 @@ export class Cell extends MatrixCell {
   }
 
   place(): void {
-    this.game.matrix.rowList[this.y].cellList[this.x] = this;
+    this.game.cellMatrix[this.y][this.x] = this;
   }
 }
 

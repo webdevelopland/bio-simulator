@@ -13,13 +13,15 @@
       [disabled]="!game.isPlaying"
     >Pause</button>
   </div>
-  <div class="grid">
-    <div class="row" *ngFor="let row of game.matrix.rowList">
+  <div class="matrix">
+    <div class="row" *ngFor="let row of game.colorMatrix">
       <div
         class="cell"
-        *ngFor="let cell of row.cellList"
-        [style.background]="cell.color"
-      ></div>
+        *ngFor="let cell of row"
+      >
+        <div class="color light" [style.opacity]="cell.opacity"></div>
+        <div class="color hex" [style.background]="cell.hex"></div>
+      </div>
     </div>
   </div>
 </div>
