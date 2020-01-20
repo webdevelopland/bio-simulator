@@ -17,4 +17,8 @@ export class PlanetComponent {
   start(): void {
     this.game.start();
   }
+
+  pause(): void {
+    this.game.pause();
+  }
 }

@@ -2,6 +2,9 @@
   padding: 15px;
   >.panel {
     margin-bottom: 10px;
+    button {
+      margin-right: 10px;
+    }
   }
   >.grid {
     display: flex;

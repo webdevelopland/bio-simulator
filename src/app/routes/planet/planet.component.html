@@ -1,6 +1,17 @@
 <div class="page">
   <div class="panel">
-    <button mat-flat-button (click)="start()" color="primary">Start</button>
+    <button
+      mat-flat-button
+      (click)="start()"
+      color="primary"
+      [disabled]="game.isPlaying"
+    >Start</button>
+    <button
+      mat-flat-button
+      (click)="pause()"
+      color="primary"
+      [disabled]="!game.isPlaying"
+    >Pause</button>
   </div>
   <div class="grid">
     <div class="row" *ngFor="let row of game.matrix.rowList">
